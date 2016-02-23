@@ -48,7 +48,7 @@ Section Book_1_2_prod.
   Variable A B : Type.
 
   (** Recursor with projection functions instead of pattern-matching. *)
-  Let prod_rec_proj C (g : A -> B -> C) (p : A * B) : C :=
+  Definition prod_rec_proj C (g : A -> B -> C) (p : A * B) : C :=
     g (fst p) (snd p).
   Definition Book_1_2_prod := prod_rec_proj.
 
@@ -79,8 +79,9 @@ Section Book_1_2_sig.
     reflexivity.
   Defined.
 
-  (** NB: You cannot implement pr2 with only the recursor, so it is not possible
-      to check its definitional equality as the exercise suggests. *)
+  (** NB: You cannot implement pr2 with only the recursor, so it is
+      not possible to check its definitional equality as the exercise
+      suggests. *)
 End Book_1_2_sig.
 
 (* ================================================== ex:pr-to-ind *)
@@ -123,11 +124,85 @@ End Book_1_3_sig.
 (* ================================================== ex:iterator *)
 (** Exercise 1.4 *)
 
+Fixpoint iter (C : Type) (c0 : C) (csuc : C -> C) (n : nat) : C :=
+  match n with
+  | O => c0
+  | S n' => csuc (iter C c0 csuc n')
+  end.
+
+Check nat_rec.
+
+Definition recN'  (C : Type) (c0 : C) (f : nat -> C -> C) : (nat -> C) :=
+  fun n => (snd (iter (nat * C)
+                      (0, c0)
+                      (fun nc => (S (fst nc),
+                                 (f (fst nc) (snd nc))))
+                      n)).
+
+Definition fact (n : nat) : nat :=
+  nat_rec nat (S O) (fun n' acc => (S n') * acc) n.
+
+Example fact5 : fact 5 = 120. reflexivity. Qed.
+
+Definition fact' (n : nat) : nat :=
+  recN' nat (S O) (fun n' acc => (S n') * acc) n.
+
+Example fact'5 : fact' 5 = 120. reflexivity. Qed.
+
+Lemma rewrite_iter : forall C c0 f n,
+  (iter C c0 f (S n)) = f (iter C c0 f n).
+Proof.
+  auto.
+Defined.  
+
+Lemma iter_fst_n : forall C c0 f n,
+    fst (iter (nat * C) (0, c0)
+              (fun nc : nat * C => ((fst nc).+1, f (fst nc) (snd nc))) n)
+= n.
+Proof.
+  induction n; auto.
+  simpl.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
+Lemma iter_snd_rec : forall C c0 f n,
+    (snd
+       (iter (nat * C) (0, c0)
+             (fun nc : nat * C => ((fst nc).+1, f (fst nc) (snd nc))) n))
+    = recN' C c0 f n.
+Proof.  
+  intros.
+  unfold recN'. reflexivity. 
+Qed.
+
+Theorem recN'_valid : forall n C c0 f,
+    nat_rec C c0 f n = recN' C c0 f n.
+Proof.
+  intros n.
+  induction n; auto.
+  intros C c0 f.
+  simpl.
+  unfold recN'.
+  simpl.
+  rewrite iter_fst_n.
+  rewrite iter_snd_rec.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
+(* Note: rewrite uses Overture.internal_paths_rew_r
+         TODO: Go look at that *)
+
 
 
 (* ================================================== ex:sum-via-bool *)
 (** Exercise 1.5 *)
 
+Check Bool_rec.
+
+Definition sum_via_Bool (A B : Type) : Type :=
+  (exists x, Bool_rec Type A B x).
 
 
 (* ================================================== ex:prod-via-bool *)
